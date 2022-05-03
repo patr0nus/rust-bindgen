@@ -53,11 +53,11 @@ mod clang;
 mod codegen;
 mod deps;
 mod features;
-mod ir;
 mod parse;
 mod regex_set;
 mod time;
 
+pub mod ir;
 pub mod callbacks;
 
 doc_mod!(clang, clang_docs);
@@ -71,7 +71,7 @@ use crate::features::RustFeatures;
 pub use crate::features::{
     RustTarget, LATEST_STABLE_RUST, RUST_TARGET_STRINGS,
 };
-use crate::ir::context::{BindgenContext, ItemId};
+use crate::ir::context::{BindgenContext, ItemId, ModuleId};
 use crate::ir::item::Item;
 use crate::parse::{ClangItemParser, ParseError};
 use crate::regex_set::RegexSet;
@@ -1476,8 +1476,7 @@ impl Builder {
         self
     }
 
-    /// Generate the Rust bindings using the options built up thus far.
-    pub fn generate(mut self) -> Result<Bindings, BindgenError> {
+    fn generate_context(mut self) -> Result<BindgenContext, BindgenError> {
         // Add any extra arguments from the environment to the clang command line.
         self.options.clang_args.extend(get_extra_clang_args());
 
@@ -1500,6 +1499,24 @@ impl Builder {
         );
 
         Bindings::generate(self.options)
+    }
+
+    /// Generate the ir representation of Rust bindings using the options built up thus far.
+    pub fn generate_ir(self) -> Result<(ModuleId, impl Iterator<Item = (ItemId, Item)>), BindgenError> {
+        let context = self.generate_context()?;
+        Ok((context.root_module(), context.into_items()))
+    }
+
+    /// Generate the Rust bindings using the options built up thus far.
+    pub fn generate(self) -> Result<Bindings, BindgenError> {
+        let context = self.generate_context()?;
+        let (items, options) = codegen::codegen(context);
+        Ok(Bindings {
+            options,
+            module: quote! {
+                #( #items )*
+            },
+        })
     }
 
     /// Preprocess and dump the input header files to disk.
@@ -2274,7 +2291,7 @@ impl Bindings {
     /// Generate bindings for the given options.
     pub(crate) fn generate(
         mut options: BindgenOptions,
-    ) -> Result<Bindings, BindgenError> {
+    ) -> Result<BindgenContext, BindgenError> {
         ensure_libclang_is_loaded();
 
         #[cfg(feature = "runtime")]
@@ -2435,14 +2452,7 @@ impl Bindings {
             parse(&mut context)?;
         }
 
-        let (items, options) = codegen::codegen(context);
-
-        Ok(Bindings {
-            options,
-            module: quote! {
-                #( #items )*
-            },
-        })
+        Ok(context)
     }
 
     /// Write these bindings as source text to a file.
