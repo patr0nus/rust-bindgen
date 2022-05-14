@@ -418,7 +418,31 @@ pub struct Item {
     /// The item kind.
     kind: ItemKind,
     /// The source location of the item.
-    location: Option<clang::SourceLocation>,
+    location: Option<SourceLocation>,
+}
+
+/// A `SourceLocation` is a file, line, column, and byte offset location for
+/// some source text.
+#[derive(Debug)]
+pub struct SourceLocation {
+    /// The file path
+    pub path: Option<String>,
+    /// The line offset
+    pub line: usize,
+    /// The column offset
+    pub column: usize,
+    /// The byte offset
+    pub byte: usize,
+}
+
+impl From<clang::SourceLocation> for SourceLocation {
+    fn from(l: clang::SourceLocation) -> Self {
+        let (file, line, column, byte) = l.location();
+        Self {
+            path: file.name(),
+            line, column, byte
+        }
+    }
 }
 
 impl AsRef<ItemId> for Item {
@@ -448,7 +472,7 @@ impl Item {
             comment,
             annotations: annotations.unwrap_or_default(),
             kind,
-            location,
+            location: location.map(SourceLocation::from),
         }
     }
 
@@ -531,7 +555,7 @@ impl Item {
     }
 
     /// Where in the source is this item located?
-    pub fn location(&self) -> Option<&clang::SourceLocation> {
+    pub fn location(&self) -> Option<&SourceLocation> {
         self.location.as_ref()
     }
 
@@ -648,9 +672,7 @@ impl Item {
 
         if !ctx.options().blocklisted_files.is_empty() {
             if let Some(location) = &self.location {
-                let (file, _, _, _) = location.location();
-                if let Some(filename) = file.name() {
-                    println!("{}", filename);
+                if let Some(filename) = &location.path {
                     if ctx.options().blocklisted_files.matches(&filename) {
                         return true;
                     }

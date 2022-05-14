@@ -2314,8 +2314,7 @@ If you encounter an error missing from this list, please file an issue or a PR!"
                     // are always included.
                     if !self.options().allowlisted_files.is_empty() {
                         if let Some(location) = item.location() {
-                            let (file, _, _, _) = location.location();
-                            if let Some(filename) = file.name() {
+                            if let Some(filename) = &location.path {
                                 if self
                                     .options()
                                     .allowlisted_files
