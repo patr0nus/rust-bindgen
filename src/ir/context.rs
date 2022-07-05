@@ -870,11 +870,8 @@ If you encounter an error missing from this list, please file an issue or a PR!"
     }
 
     /// Iterate over all items that have been defined.
-    pub fn into_items(self) -> impl Iterator<Item = (ItemId, Item)> {
-        self.items.into_iter().enumerate().filter_map(|(index, item)| {
-            let item = item?;
-            Some((ItemId(index), item))
-        })
+    pub fn into_items(self) -> impl Iterator<Item = Item> {
+        self.items.into_iter().enumerate().filter_map(|(_, item)| item)
     }
 
     /// Have we collected all unresolved type references yet?

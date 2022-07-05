@@ -1502,7 +1502,7 @@ impl Builder {
     }
 
     /// Generate the ir representation of Rust bindings using the options built up thus far.
-    pub fn generate_ir(self) -> Result<(ModuleId, impl Iterator<Item = (ItemId, Item)>), BindgenError> {
+    pub fn generate_ir(self) -> Result<(ModuleId, impl Iterator<Item = Item>), BindgenError> {
         let context = self.generate_context()?;
         Ok((context.root_module(), context.into_items()))
     }
